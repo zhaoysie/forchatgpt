@@ -11830,7 +11830,25 @@ void sofia_handle_sip_i_options(int status,
 	}
 
 }
+void sofia_handle_sip_i_options2(int status,
+								char const *phrase,
+								nua_t *nua, sofia_profile_t *profile, nua_handle_t *nh, sofia_private_t *sofia_private, sip_t const *sip,
+								sofia_dispatch_event_t *de,
+								tagi_t tags[])
+{
+	uint32_t sess_count = switch_core_session_count();
+	uint32_t sess_max = switch_core_session_limit(0);
 
+	if (sofia_test_pflag(profile, PFLAG_OPTIONS_RESPOND_503_ON_BUSY) &&
+			(sess_count >= sess_max || !sofia_test_pflag(profile, PFLAG_RUNNING) || !switch_core_ready_inbound())) {
+		nua_respond(nh, 503, "Maximum Calls In Progress", NUTAG_WITH_THIS_MSG(de->data->e_msg), SIPTAG_RETRY_AFTER_STR("300"), TAG_END());
+	} else {
+		switch_assert(sip);
+		nua_respond(nh, SIP_200_OK, NUTAG_WITH_THIS_MSG(de->data->e_msg),
+					TAG_IF(sip->sip_record_route, SIPTAG_RECORD_ROUTE(sip->sip_record_route)), TAG_END());
+	}
+
+}
 /*
  * This subroutine will take the a_params of a sip_addr_s structure and spin through them.
  * Each param will be used to create a channel variable.
